@@ -12,6 +12,7 @@ provider = NemotronProvider()
 
 
 class ChatRequest(BaseModel):
+    conversation_id: str
     message: str
 
 
@@ -34,27 +35,35 @@ def health():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    conversation.add_user_message(request.message)
+    conversation.add_user_message(
+        request.conversation_id,
+        request.message,
+    )
 
     response = await provider.generate(
-        conversation.get_messages()
+        conversation.get_messages(
+            request.conversation_id
+        )
     )
 
     conversation.add_assistant_message(
-        response.content
+        request.conversation_id,
+        response.content,
     )
 
     return {
+        "conversation_id": request.conversation_id,
         "message": request.message,
         "response": response.content,
-        "model": response.model
+        "model": response.model,
     }
 
 
-@app.delete("/chat")
-def clear_chat():
-    conversation.clear()
+@app.delete("/chat/{conversation_id}")
+def clear_chat(conversation_id: str):
+    conversation.clear(conversation_id)
 
     return {
-        "status": "cleared"
+        "conversation_id": conversation_id,
+        "status": "cleared",
     }

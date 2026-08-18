@@ -3,30 +3,54 @@ from app.llm.base import LLMMessage
 
 class ConversationManager:
     """
-    Stores conversation messages for the current Skylo session.
+    Stores multiple Skylo conversations in memory.
     """
 
     def __init__(self) -> None:
-        self.messages: list[LLMMessage] = []
+        self.conversations: dict[str, list[LLMMessage]] = {}
 
-    def add_user_message(self, content: str) -> None:
-        self.messages.append(
+    def create_conversation(self, conversation_id: str) -> None:
+        if conversation_id not in self.conversations:
+            self.conversations[conversation_id] = []
+
+    def add_user_message(
+        self,
+        conversation_id: str,
+        content: str,
+    ) -> None:
+        self.create_conversation(conversation_id)
+
+        self.conversations[conversation_id].append(
             LLMMessage(
                 role="user",
                 content=content,
             )
         )
 
-    def add_assistant_message(self, content: str) -> None:
-        self.messages.append(
+    def add_assistant_message(
+        self,
+        conversation_id: str,
+        content: str,
+    ) -> None:
+        self.create_conversation(conversation_id)
+
+        self.conversations[conversation_id].append(
             LLMMessage(
                 role="assistant",
                 content=content,
             )
         )
 
-    def get_messages(self) -> list[LLMMessage]:
-        return self.messages.copy()
+    def get_messages(
+        self,
+        conversation_id: str,
+    ) -> list[LLMMessage]:
+        self.create_conversation(conversation_id)
 
-    def clear(self) -> None:
-        self.messages.clear()
+        return self.conversations[conversation_id].copy()
+
+    def clear(
+        self,
+        conversation_id: str,
+    ) -> None:
+        self.conversations.pop(conversation_id, None)
