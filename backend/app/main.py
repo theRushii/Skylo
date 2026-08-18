@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from app.llm.base import LLMMessage
+from app.conversation.manager import ConversationManager
 from app.llm.nemotron import NemotronProvider
 
 
 app = FastAPI(title="Skylo API")
+
+conversation = ConversationManager()
+provider = NemotronProvider()
 
 
 class ChatRequest(BaseModel):
@@ -31,19 +34,27 @@ def health():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    provider = NemotronProvider()
+    conversation.add_user_message(request.message)
 
     response = await provider.generate(
-        [
-            LLMMessage(
-                role="user",
-                content=request.message
-            )
-        ]
+        conversation.get_messages()
+    )
+
+    conversation.add_assistant_message(
+        response.content
     )
 
     return {
         "message": request.message,
         "response": response.content,
         "model": response.model
+    }
+
+
+@app.delete("/chat")
+def clear_chat():
+    conversation.clear()
+
+    return {
+        "status": "cleared"
     }
