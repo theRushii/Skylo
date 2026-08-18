@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.llm.base import LLMMessage
+from app.llm.nemotron import NemotronProvider
+
+
 app = FastAPI(title="Skylo API")
 
 
@@ -26,8 +30,20 @@ def health():
 
 
 @app.post("/chat")
-def chat(request: ChatRequest):
+async def chat(request: ChatRequest):
+    provider = NemotronProvider()
+
+    response = await provider.generate(
+        [
+            LLMMessage(
+                role="user",
+                content=request.message
+            )
+        ]
+    )
+
     return {
         "message": request.message,
-        "response": "Skylo received your message."
+        "response": response.content,
+        "model": response.model
     }
