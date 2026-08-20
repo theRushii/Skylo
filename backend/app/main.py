@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -9,6 +10,20 @@ from app.llm.nemotron import NemotronProvider
 
 
 app = FastAPI(title="Skylo API")
+
+
+# Allow the React frontend to communicate with FastAPI.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 conversation = ConversationManager()
 provider = NemotronProvider()
