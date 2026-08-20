@@ -1,7 +1,8 @@
 import os
+from collections.abc import AsyncIterator
 
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, DefaultAioHttpClient
 
 from app.llm.base import LLMMessage, LLMProvider, LLMResponse
 
@@ -41,10 +42,7 @@ Behavior rules:
 2. If a coding request is unclear, ask a short clarification question.
 3. Explain concepts simply for beginners unless the user requests advanced detail.
 4. Do not claim generated code is guaranteed to work.
-5. Clearly distinguish between:
-   - generated code
-   - verified code
-   - assumptions
+5. Clearly distinguish between generated code, verified code, and assumptions.
 6. Prefer simple, maintainable solutions over unnecessary complexity.
 7. Do not invent APIs, libraries, functions, benchmarks, or results.
 8. When debugging, explain the likely cause before suggesting a fix.
@@ -69,15 +67,15 @@ class NemotronProvider(LLMProvider):
         self.model = "nvidia/nemotron-3-ultra-550b-a55b"
 
         self.client = AsyncOpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=api_key,
-        )
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=api_key,
+    http_client=DefaultAioHttpClient(),
+)
 
-    async def generate(
+    def _format_messages(
         self,
         messages: list[LLMMessage],
-    ) -> LLMResponse:
-
+    ) -> list[dict[str, str]]:
         formatted_messages = [
             {
                 "role": "system",
@@ -93,9 +91,15 @@ class NemotronProvider(LLMProvider):
             for message in messages
         )
 
+        return formatted_messages
+
+    async def generate(
+        self,
+        messages: list[LLMMessage],
+    ) -> LLMResponse:
         response = await self.client.chat.completions.create(
             model=self.model,
-            messages=formatted_messages,
+            messages=self._format_messages(messages),
         )
 
         content = response.choices[0].message.content or ""
@@ -104,3 +108,23 @@ class NemotronProvider(LLMProvider):
             content=content,
             model=self.model,
         )
+
+    async def stream(
+        self,
+        messages: list[LLMMessage],
+    ) -> AsyncIterator[str]:
+        stream = await self.client.chat.completions.create(
+            model=self.model,
+            messages=self._format_messages(messages),
+            stream=True,
+        )
+
+        try:
+            async for chunk in stream:
+                content = chunk.choices[0].delta.content
+
+                if content:
+                    yield content
+
+        finally:
+            await stream.close()

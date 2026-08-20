@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 
@@ -25,6 +26,16 @@ class LLMProvider(ABC):
         messages: list[LLMMessage],
     ) -> LLMResponse:
         """
-        Generate a response from the language model.
+        Generate and return one complete LLM response.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def stream(
+        self,
+        messages: list[LLMMessage],
+    ) -> AsyncIterator[str]:
+        """
+        Stream pieces of the LLM response as they are generated.
         """
         raise NotImplementedError
